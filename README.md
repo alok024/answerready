@@ -1,5 +1,7 @@
 # AnswerReady
 
+[![CI](https://github.com/alok024/answerready/actions/workflows/ci.yml/badge.svg)](https://github.com/alok024/answerready/actions/workflows/ci.yml) [![Deploy](https://github.com/alok024/answerready/actions/workflows/deploy.yml/badge.svg)](https://github.com/alok024/answerready/actions/workflows/deploy.yml)
+
 Make your content citable by AI answer engines. AnswerReady turns a URL or a topic
 into a generative-engine-optimization (GEO) kit so ChatGPT, Perplexity, Gemini, and
 Google AI Overviews can find and quote you.
