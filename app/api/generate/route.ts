@@ -1,4 +1,5 @@
 import { generateKit } from '@/lib/generate';
+import { safeFetch } from '@/lib/ssrf';
 
 export const runtime = 'nodejs';
 
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
   let pageText: string | undefined;
   if (mode === 'url') {
     try {
-      const res = await fetch(value.startsWith('http') ? value : `https://${value}`, {
+      // safeFetch blocks SSRF (internal/private/metadata targets) and re-validates redirects.
+      const res = await safeFetch(value.startsWith('http') ? value : `https://${value}`, {
         headers: { 'user-agent': 'AnswerReadyBot/1.0' },
         signal: AbortSignal.timeout(8000),
       });
@@ -40,7 +42,8 @@ export async function POST(req: Request) {
         pageText = stripTags(html).slice(0, 6000);
       }
     } catch {
-      // Fetch failed (offline/blocked): fall back to treating the value as a topic.
+      // Fetch failed or the URL was rejected as non-public: silently fall back to topic mode
+      // (no error oracle that would reveal whether an internal host exists).
       pageText = undefined;
     }
   }
