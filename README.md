@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/alok024/answerready/actions/workflows/ci.yml/badge.svg)](https://github.com/alok024/answerready/actions/workflows/ci.yml) [![Deploy](https://github.com/alok024/answerready/actions/workflows/deploy.yml/badge.svg)](https://github.com/alok024/answerready/actions/workflows/deploy.yml)
 
-Make your content citable by AI answer engines. AnswerReady turns a URL or a topic
-into a generative-engine-optimization (GEO) kit so ChatGPT, Perplexity, Gemini, and
-Google AI Overviews can find and quote you.
+A free GEO/AEO kit generator. AnswerReady turns a URL or a topic into a complete
+generative-engine-optimization (GEO) kit — no account, no paywall — so ChatGPT,
+Perplexity, Gemini, and Google AI Overviews can find and quote you.
 
 Each kit contains:
 
@@ -17,8 +17,9 @@ Each kit contains:
 
 1. Pick a mode (Topic or URL) and enter your topic or a live page URL.
 2. `POST /api/generate` extracts page text (URL mode), then calls `lib/generate.generateKit`.
-3. The FAQ pairs come from Groq `llama-3.3-70b-versatile`; the JSON-LD, llms.txt, and
-   snippets are built **deterministically** from those pairs, so structured data is always valid.
+3. The FAQ pairs come from Groq `llama-3.1-8b-instant` (override with `GROQ_MODEL`); the
+   JSON-LD, llms.txt, and snippets are built **deterministically** from those pairs, so
+   structured data is always valid.
 4. With no `GROQ_API_KEY`, a mock responder synthesizes realistic template FAQs so the whole
    flow works offline with zero keys.
 
@@ -34,7 +35,11 @@ npm run dev        # local dev server at http://localhost:3000
 Everything works in mock mode out of the box: the generator returns template FAQs and the
 checkout completes with a locally-verified mock signature (no real charge).
 
-## Pricing and the Razorpay checkout flow
+## Optional Pro add-on and the Razorpay checkout flow
+
+The generator above is free and complete: no account, no purchase, no limit. The plans below
+are an optional, future Pro add-on for higher-volume use — the checkout flow is wired
+end-to-end in this repo today, but nothing here gates the generator behind it.
 
 | Plan          | Price          | Includes                                  |
 | ------------- | -------------- | ----------------------------------------- |
@@ -58,11 +63,11 @@ Both branches are in `app/page.tsx`; only the mock branch runs without keys.
 
 ## Real cost-per-use math
 
-- Model: Groq `llama-3.3-70b-versatile`, roughly 1.5k input tokens + 2.5k output tokens per kit.
+- Model: Groq `llama-3.1-8b-instant`, roughly 1.5k input tokens + 2.5k output tokens per kit.
 - Groq pricing is well under $1 per million tokens on this model, so a kit costs **~$0.003**.
-- Sell at **$19 one-time** or **$29-$79 / month**. Even the single kit is a ~6,000x markup on
-  compute; at 25-150 kits/month the marginal COGS is roughly $0.08-$0.45.
-- **Gross margin ~96%** after payment-processing fees.
+- The kit itself is free to generate. If the optional Pro add-on above ever ships, even the
+  single-kit price point is a ~6,000x markup on compute, with **~96% gross margin** after
+  payment-processing fees.
 
 ## Real API keys needed to go live
 

@@ -78,7 +78,6 @@ export default function Home() {
   const [kit, setKit] = useState<Kit | null>(null);
   const [tab, setTab] = useState<TabKey>('faqs');
   const [copied, setCopied] = useState<string>('');
-  const [usedFree, setUsedFree] = useState(false);
 
   const [unlocked, setUnlocked] = useState(false);
   const [buying, setBuying] = useState('');
@@ -102,7 +101,6 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || 'Generation failed');
       setKit(data as Kit);
       setTab('faqs');
-      setUsedFree(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
     } finally {
@@ -208,17 +206,18 @@ export default function Home() {
       </nav>
 
       <header className="hero container">
-        <span className="eyebrow">Generative Engine Optimization</span>
+        <span className="eyebrow">Free GEO / AEO Kit Generator</span>
         <h1>
           Get cited by <span className="gradient-text">ChatGPT, Perplexity</span> and Google AI Overviews
         </h1>
         <p className="lead">
-          Paste a URL or a topic and get an answer-engine-ready kit in seconds: FAQ blocks, valid schema.org
-          FAQPage JSON-LD, an llms.txt file, and short, quotable snippets AI engines love to cite.
+          Paste a URL or a topic and get a complete, free answer-engine-ready kit in seconds: FAQ blocks,
+          valid schema.org FAQPage JSON-LD, an llms.txt file, and short, quotable snippets AI engines love
+          to cite. No account and no paywall.
         </p>
         <div className="row" style={{ justifyContent: 'center', maxWidth: 420, margin: '0 auto' }}>
           <a className="btn lg" href="#tool">
-            Generate a free kit
+            Generate your free kit
           </a>
           <a className="btn secondary lg" href="#how">
             How it works
@@ -269,11 +268,7 @@ export default function Home() {
         <div className="card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <h2 style={{ margin: 0 }}>Build your GEO kit</h2>
-            {unlocked ? (
-              <span className="badge ok">Unlimited unlocked</span>
-            ) : (
-              <span className="badge">Free preview</span>
-            )}
+            <span className="badge ok">Free, no limit</span>
           </div>
 
           <div className="row" style={{ marginTop: 18, marginBottom: 4 }}>
@@ -319,12 +314,6 @@ export default function Home() {
 
           {error && (
             <p style={{ color: 'var(--err)', marginTop: 12, marginBottom: 0 }}>{error}</p>
-          )}
-
-          {usedFree && !unlocked && (
-            <p className="muted" style={{ marginTop: 14, marginBottom: 0, fontSize: '0.9rem' }}>
-              1 free kit used — <a href="#pricing">upgrade for unlimited</a>.
-            </p>
           )}
 
           {kit && (
@@ -436,10 +425,12 @@ export default function Home() {
 
       <section className="section container" id="pricing">
         <div className="center">
-          <span className="eyebrow">Pricing</span>
-          <h2>Simple pricing, ~96% margin baked in</h2>
+          <span className="eyebrow">Optional add-on</span>
+          <h2>The kit generator is free. Pro is optional.</h2>
           <p className="lead" style={{ margin: '0 auto 8px' }}>
-            Start with one kit, or go unlimited. Every plan exports FAQ, JSON-LD, llms.txt, and snippets.
+            Everything above is free to use, with no account and no limit. Pro is a future add-on for
+            teams that want higher volume, bulk URL import, and priority generation — it is not required
+            to generate your kit.
           </p>
         </div>
 

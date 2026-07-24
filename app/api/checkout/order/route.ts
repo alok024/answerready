@@ -1,8 +1,12 @@
 import { createCheckoutOrder } from '@/lib/checkout';
+import { checkoutUnavailableReason } from '@/lib/razorpay';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  const unavailable = checkoutUnavailableReason();
+  if (unavailable) return Response.json({ error: unavailable }, { status: 503 });
+
   let body: { planId?: string };
   try {
     body = await req.json();

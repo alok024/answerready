@@ -12,8 +12,27 @@ const KEY_ID = process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_TEST_KEY_ID |
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_TEST_KEY_SECRET || '';
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-// Mock mode when no live secret is present — local dev + tests run the whole flow without keys.
-export const RAZORPAY_MOCK = !KEY_ID || !KEY_SECRET;
+const KEYS_MISSING = !KEY_ID || !KEY_SECRET;
+
+// Mock is only allowed outside production, or with an explicit opt-in — otherwise a prod
+// deploy with no keys configured would silently hand out fake "paid" orders.
+function mockAllowed(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.RAZORPAY_ALLOW_MOCK === 'true';
+}
+
+// Mock mode when no live secret is present and mock is allowed — local dev + tests run the
+// whole flow without keys. Production with no keys and no opt-in falls through to
+// checkoutUnavailableReason() instead.
+export const RAZORPAY_MOCK = KEYS_MISSING && mockAllowed();
+
+// Non-null only in production when keys are absent and mock hasn't been explicitly opted
+// into. Callers use this to fail closed instead of letting createOrder mock a "paid" order.
+export function checkoutUnavailableReason(): string | null {
+  if (KEYS_MISSING && !mockAllowed()) {
+    return 'Checkout is not configured: Razorpay keys are missing in production';
+  }
+  return null;
+}
 
 export interface CreatedOrder {
   order_id: string;
@@ -30,6 +49,9 @@ export async function createOrder(
   currency: string,
   notes: Record<string, string>,
 ): Promise<CreatedOrder> {
+  const unavailable = checkoutUnavailableReason();
+  if (unavailable) throw new Error(unavailable);
+
   if (RAZORPAY_MOCK) {
     // Deterministic-ish mock id; no network. Signature check below understands mock orders.
     const id = 'order_mock_' + crypto.randomBytes(8).toString('hex');
@@ -66,7 +88,8 @@ export function verifyPaymentSignature(orderId: string, paymentId: string, signa
 // Verify a webhook: HMAC-SHA256 over the RAW request body with the webhook secret.
 // Register the webhook route with a raw-body parser BEFORE any JSON body parser.
 export function verifyWebhookSignature(rawBody: Buffer | string, signature: string): boolean {
-  if (RAZORPAY_MOCK || !WEBHOOK_SECRET) return true; // mock: trust local webhook simulator
+  if (RAZORPAY_MOCK) return true; // mock: trust local webhook simulator
+  if (!WEBHOOK_SECRET) return false; // no secret and not in mock mode — fail closed, not open
   const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest('hex');
   return hexEqual(expected, signature);
 }

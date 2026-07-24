@@ -1,7 +1,13 @@
 import { generateKit } from '@/lib/generate';
 import { safeFetch } from '@/lib/ssrf';
+import { capText, readCappedText, MAX_PAGE_TEXT_CHARS } from '@/lib/limits';
+import { getRateLimitStore, clientIp } from '@/lib/store/rate-limit';
 
 export const runtime = 'nodejs';
+
+// Same message/status for a rejected-non-public URL and a generic fetch failure so a caller
+// can't distinguish "SSRF-blocked" from "unreachable" (no existence/timing oracle).
+const URL_FETCH_ERROR = 'Could not fetch that URL. Make sure it is public and reachable.';
 
 // Crudely strip HTML to text so page content can seed the FAQ generation.
 function stripTags(html: string): string {
@@ -16,6 +22,15 @@ function stripTags(html: string): string {
 }
 
 export async function POST(req: Request) {
+  const key = clientIp(req);
+  const limit = getRateLimitStore().hit(key);
+  if (!limit.allowed) {
+    return Response.json(
+      { error: 'Rate limit exceeded, please try again shortly.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(limit.resetMs / 1000)) } },
+    );
+  }
+
   let body: { mode?: string; value?: string };
   try {
     body = await req.json();
@@ -24,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   const mode = body.mode === 'url' ? 'url' : 'topic';
-  const value = (body.value || '').trim();
+  const value = capText(body.value ?? '');
   if (!value) {
     return Response.json({ error: 'Please enter a URL or topic.' }, { status: 400 });
   }
@@ -37,14 +52,11 @@ export async function POST(req: Request) {
         headers: { 'user-agent': 'AnswerReadyBot/1.0' },
         signal: AbortSignal.timeout(8000),
       });
-      if (res.ok) {
-        const html = await res.text();
-        pageText = stripTags(html).slice(0, 6000);
-      }
+      if (!res.ok) throw new Error('Fetch failed');
+      const html = await readCappedText(res);
+      pageText = stripTags(html).slice(0, MAX_PAGE_TEXT_CHARS);
     } catch {
-      // Fetch failed or the URL was rejected as non-public: silently fall back to topic mode
-      // (no error oracle that would reveal whether an internal host exists).
-      pageText = undefined;
+      return Response.json({ error: URL_FETCH_ERROR }, { status: 422 });
     }
   }
 

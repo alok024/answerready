@@ -1,4 +1,5 @@
-import { generateJSON, type ChatMessage } from './groq';
+import { generateJSON, GROQ_MOCK, type ChatMessage } from './groq';
+import { capText, MAX_PAGE_TEXT_CHARS } from './limits';
 
 export interface Faq {
   q: string;
@@ -121,19 +122,43 @@ function buildJsonLd(faqs: Faq[]): string {
   return JSON.stringify(doc, null, 2);
 }
 
-// Deterministic llms.txt: title, summary, then a flat FAQ list AI crawlers can cite.
+// URL-safe anchor slug from a question; deduped against slugs already used in this document.
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function uniqueSlug(text: string, seen: Set<string>): string {
+  const base = slugify(text) || 'question';
+  let slug = base;
+  let i = 2;
+  while (seen.has(slug)) slug = `${base}-${i++}`;
+  seen.add(slug);
+  return slug;
+}
+
+// First sentence of an answer, truncated to a short per-item note.
+function shortNote(answer: string, max = 100): string {
+  const first = answer.split(/(?<=[.!?])\s+/)[0]?.trim() ?? '';
+  return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
+}
+
+// Deterministic, spec-compliant llms.txt (llmstxt.org shape): H1 title, blockquote
+// summary, then a curated markdown link list AI crawlers can parse and cite.
 function buildLlmsTxt(topic: string, faqs: Faq[]): string {
   const title = titleCase(topic);
+  const seen = new Set<string>();
   const lines: string[] = [];
   lines.push(`# ${title}`);
   lines.push('');
   lines.push(`> A concise, citable FAQ and answer-engine-optimization kit for "${topic}".`);
   lines.push('');
-  lines.push('## FAQ');
-  lines.push('');
+  lines.push('## Key FAQs');
   for (const f of faqs) {
-    lines.push(`- Q: ${f.q}`);
-    lines.push(`  A: ${f.a}`);
+    const slug = uniqueSlug(f.q, seen);
+    lines.push(`- [${f.q}](#${slug}): ${shortNote(f.a)}`);
   }
   lines.push('');
   return lines.join('\n');
@@ -151,11 +176,11 @@ function buildSnippets(faqs: Faq[]): string[] {
 }
 
 export async function generateKit(input: GenerateInput): Promise<Kit> {
-  const topic = deriveTopic(input) || 'this topic';
+  const topic = capText(deriveTopic(input) || 'this topic');
 
   const context =
     input.mode === 'url' && input.pageText
-      ? `Source page content (may be truncated):\n"""\n${input.pageText.slice(0, 6000)}\n"""`
+      ? `Source page content (may be truncated):\n"""\n${input.pageText.slice(0, MAX_PAGE_TEXT_CHARS)}\n"""`
       : `Topic: "${topic}"`;
 
   const messages: ChatMessage[] = [
@@ -181,7 +206,11 @@ Return JSON of exactly this shape: {"faqs":[{"q":"question text","a":"answer tex
   });
 
   let faqs = normalizeFaqs(raw);
-  if (faqs.length < 4) faqs = mockFaqs(topic); // safety net for a thin model response
+  if (faqs.length < 4) {
+    // Keyless dev/test only: a real provider returning this thin must fail loudly, not be papered over.
+    if (!GROQ_MOCK) throw new Error(`Provider returned ${faqs.length} usable FAQs, need at least 4`);
+    faqs = mockFaqs(topic);
+  }
 
   return {
     faqs,
