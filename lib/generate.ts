@@ -19,7 +19,6 @@ export interface GenerateInput {
   pageText?: string;
 }
 
-// Strip a leading "best ", "top 10 ", "the best " so question frames read naturally.
 function questionPhrase(topic: string): string {
   return topic
     .replace(/^(the\s+)?(best|top|cheapest|greatest)\s+(\d+\s+)?/i, '')
@@ -32,7 +31,6 @@ function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Derive a clean, human-readable topic from a raw URL path/host.
 function topicFromUrl(url: string): string {
   try {
     const u = new URL(url.startsWith('http') ? url : `https://${url}`);
@@ -55,7 +53,6 @@ function deriveTopic(input: GenerateInput): string {
   return topicFromUrl(input.value);
 }
 
-// Realistic, non-echo mock FAQs so the kit is genuinely useful with no API key.
 function mockFaqs(topic: string): Faq[] {
   const title = titleCase(topic);
   const p = questionPhrase(topic);
@@ -105,7 +102,6 @@ function normalizeFaqs(raw: unknown): Faq[] {
   return out.slice(0, 8);
 }
 
-// Deterministic, valid schema.org FAQPage JSON-LD built from the FAQs.
 function buildJsonLd(faqs: Faq[]): string {
   const doc = {
     '@context': 'https://schema.org',
@@ -122,7 +118,6 @@ function buildJsonLd(faqs: Faq[]): string {
   return JSON.stringify(doc, null, 2);
 }
 
-// URL-safe anchor slug from a question; deduped against slugs already used in this document.
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -139,14 +134,11 @@ function uniqueSlug(text: string, seen: Set<string>): string {
   return slug;
 }
 
-// First sentence of an answer, truncated to a short per-item note.
 function shortNote(answer: string, max = 100): string {
   const first = answer.split(/(?<=[.!?])\s+/)[0]?.trim() ?? '';
   return first.length > max ? `${first.slice(0, max - 1).trimEnd()}…` : first;
 }
 
-// Deterministic, spec-compliant llms.txt (llmstxt.org shape): H1 title, blockquote
-// summary, then a curated markdown link list AI crawlers can parse and cite.
 function buildLlmsTxt(topic: string, faqs: Faq[]): string {
   const title = titleCase(topic);
   const seen = new Set<string>();
@@ -164,7 +156,6 @@ function buildLlmsTxt(topic: string, faqs: Faq[]): string {
   return lines.join('\n');
 }
 
-// 4-6 short, self-contained sentences pulled from the answers for direct citation.
 function buildSnippets(faqs: Faq[]): string[] {
   const snippets: string[] = [];
   for (const f of faqs) {
@@ -207,7 +198,6 @@ Return JSON of exactly this shape: {"faqs":[{"q":"question text","a":"answer tex
 
   let faqs = normalizeFaqs(raw);
   if (faqs.length < 4) {
-    // Keyless dev/test only: a real provider returning this thin must fail loudly, not be papered over.
     if (!GROQ_MOCK) throw new Error(`Provider returned ${faqs.length} usable FAQs, need at least 4`);
     faqs = mockFaqs(topic);
   }

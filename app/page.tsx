@@ -151,7 +151,6 @@ export default function Home() {
       if (!res.ok) throw new Error(resp.error || 'Could not start checkout');
 
       if (resp.mock_payment) {
-        // Local test mode: no keys, no real charge. Verify the precomputed signature.
         const ok = await verify(resp.order_id, resp.mock_payment.payment_id, resp.mock_payment.signature);
         if (ok) {
           setUnlocked(true);
@@ -160,7 +159,6 @@ export default function Home() {
           setBuyMsg('Verification failed.');
         }
       } else {
-        // Real keys present: open the hosted Razorpay checkout.
         await loadRazorpay();
         const RZP = (window as unknown as { Razorpay: new (o: unknown) => { open: () => void } }).Razorpay;
         const rzp = new RZP({

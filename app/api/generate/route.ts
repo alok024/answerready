@@ -5,11 +5,8 @@ import { getRateLimitStore, clientIp } from '@/lib/store/rate-limit';
 
 export const runtime = 'nodejs';
 
-// Same message/status for a rejected-non-public URL and a generic fetch failure so a caller
-// can't distinguish "SSRF-blocked" from "unreachable" (no existence/timing oracle).
 const URL_FETCH_ERROR = 'Could not fetch that URL. Make sure it is public and reachable.';
 
-// Crudely strip HTML to text so page content can seed the FAQ generation.
 function stripTags(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -47,7 +44,6 @@ export async function POST(req: Request) {
   let pageText: string | undefined;
   if (mode === 'url') {
     try {
-      // safeFetch blocks SSRF (internal/private/metadata targets) and re-validates redirects.
       const res = await safeFetch(value.startsWith('http') ? value : `https://${value}`, {
         headers: { 'user-agent': 'AnswerReadyBot/1.0' },
         signal: AbortSignal.timeout(8000),

@@ -3,7 +3,7 @@ import { createOrder, verifyPaymentSignature, mockSignature, RAZORPAY_MOCK } fro
 export type PlanKind = 'one-time' | 'sub';
 
 export interface Plan {
-  amount: number; // smallest currency unit (cents)
+  amount: number;
   currency: string;
   label: string;
   kind: PlanKind;
@@ -27,7 +27,6 @@ export async function createCheckoutOrder(planId: string) {
   const base = { ...order, planId, label: plan.label };
 
   if (order.mock) {
-    // Precompute a payment the browser can verify without opening a real modal.
     const paymentId = 'pay_mock_' + order.order_id.slice(-8);
     const signature = mockSignature(order.order_id, paymentId);
     return { ...base, mock_payment: { payment_id: paymentId, signature } };
