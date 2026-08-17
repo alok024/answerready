@@ -58,6 +58,7 @@ export function verifyPaymentSignature(orderId: string, paymentId: string, signa
   if (RAZORPAY_MOCK) {
     return signature === mockSignature(orderId, paymentId);
   }
+  if (!KEY_SECRET) return false;
   const expected = crypto.createHmac('sha256', KEY_SECRET).update(`${orderId}|${paymentId}`).digest('hex');
   return hexEqual(expected, signature);
 }
