@@ -27,6 +27,8 @@ Each kit contains:
 
 ```bash
 npm install
+npm run typecheck  # tsc --noEmit
+npm run test       # unit tests (node:test via tsx), e.g. the SSRF IP-blocking rules
 npm run build      # production build — must exit 0
 npm run smoke      # end-to-end check of generateKit + mock checkout — prints SMOKE-OK
 npm run dev        # local dev server at http://localhost:3000
@@ -61,6 +63,17 @@ Checkout flow (identical order → verify → unlock loop in mock and live):
 
 Both branches are in `app/page.tsx`; only the mock branch runs without keys.
 
+**What "unlocking" actually does today.** The server-side signature check in
+`/api/checkout/verify` is real: it HMAC-verifies the payment against the order it created, and a
+forged or mismatched signature is rejected (`lib/razorpay.ts`, `confirmPurchase`). But nothing
+downstream of that check is real yet. When verification succeeds, the browser only calls
+`setUnlocked(true)` — a local React state with no cookie, session, or database row behind it. It
+does not survive a page refresh, is not tied to the paying user in any way, and grants no access
+to anything, because the generator was never gated in the first place. Treat this repo's checkout
+as a demonstration of the order → verify integration, not a live entitlement or paywall system —
+that would need a persisted purchase record and a server-side check on every gated request, and
+neither exists here.
+
 ## Real cost-per-use math
 
 - Model: Groq `llama-3.1-8b-instant`, roughly 1.5k input tokens + 2.5k output tokens per kit.
@@ -94,6 +107,10 @@ lib/
   checkout.ts                  PLANS, createCheckoutOrder, confirmPurchase
   groq.ts                      Groq/OpenAI text helper with mock fallback
   razorpay.ts                  Razorpay helper with mock fallback
+  ssrf.ts                      assertPublicUrl/safeFetch: blocks fetches to private/link-local/
+                                loopback/CGNAT IPs (incl. IPv4-mapped IPv6); ssrf.test.ts covers it
+  limits.ts                    input and fetched-page size caps
+  store/rate-limit.ts          in-memory per-IP rate limiter for /api/generate
 scripts/
   smoke.ts                     end-to-end smoke check
 ```

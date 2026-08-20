@@ -1,7 +1,33 @@
 import { lookup } from 'dns/promises';
 import net from 'net';
 
-function isBlockedIP(ip: string): boolean {
+function expandIPv6HexGroups(ip: string): string[] | null {
+  if (ip.includes('.')) return null;
+  const halves = ip.split('::');
+  if (halves.length > 2) return null;
+  if (halves.length === 1) {
+    const groups = halves[0].split(':');
+    return groups.length === 8 ? groups : null;
+  }
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0) return null;
+  return [...head, ...Array(missing).fill('0'), ...tail];
+}
+
+function ipv4FromMappedHexGroups(ip: string): string | null {
+  const groups = expandIPv6HexGroups(ip);
+  if (!groups) return null;
+  if (!groups.slice(0, 5).every((g) => /^0{0,4}$/.test(g))) return null;
+  if (!/^0*ffff$/.test(groups[5])) return null;
+  const hi = parseInt(groups[6], 16);
+  const lo = parseInt(groups[7], 16);
+  if (!Number.isInteger(hi) || !Number.isInteger(lo)) return null;
+  return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff].join('.');
+}
+
+export function isBlockedIP(ip: string): boolean {
   if (net.isIPv4(ip)) {
     const p = ip.split('.').map(Number);
     if (p[0] === 0) return true;
@@ -19,8 +45,10 @@ function isBlockedIP(ip: string): boolean {
     if (norm === '::1' || norm === '::') return true;
     if (norm.startsWith('fe80')) return true;
     if (norm.startsWith('fc') || norm.startsWith('fd')) return true;
-    const mapped = norm.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapped) return isBlockedIP(mapped[1]);
+    const dotted = norm.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (dotted) return isBlockedIP(dotted[1]);
+    const mappedV4 = ipv4FromMappedHexGroups(norm);
+    if (mappedV4) return isBlockedIP(mappedV4);
     return false;
   }
   return true;
